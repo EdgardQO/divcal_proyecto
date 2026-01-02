@@ -1,0 +1,410 @@
+<div class="services-carousel" id="servicesCarousel">
+  <button class="car-btn prev" type="button" aria-label="Anterior">‹</button>
+
+  <div class="car-viewport">
+    <div class="car-track" id="servicesTrack">
+      <article class="car-card"><h3>Reclutamiento & Selección</h3><p>Búsqueda y evaluación de candidatos según tu perfil y cultura.</p></article>
+      <article class="car-card"><h3>Evaluación por Competencias</h3><p>Filtros técnicos y conductuales para contratar con seguridad.</p></article>
+      <article class="car-card"><h3>Asesoría para PYMES</h3><p>Te ayudamos a construir equipos sólidos con procesos simples.</p></article>
+      <article class="car-card"><h3>Onboarding</h3><p>Acompañamiento para integrar talento y acelerar resultados.</p></article>
+      <article class="car-card"><h3>Consultoría</h3><p>Mejora de procesos de selección y cultura organizacional.</p></article>
+    </div>
+  </div>
+
+  <button class="car-btn next" type="button" aria-label="Siguiente">›</button>
+</div>
+
+/* Carrusel Servicios */
+.services-carousel{ position:relative; margin-top:16px; }
+
+.car-viewport{
+  overflow:hidden;
+  padding: 8px 54px; /* espacio visual para flechas */
+}
+
+.car-track{
+  display:flex;
+  gap:16px;
+  will-change: transform;
+  transform: translateX(0);
+}
+
+.car-card{
+  flex: 0 0 calc((100% - 32px) / 3); /* 3 visibles */
+  background:#fff;
+  border:1px solid #e9e9ee;
+  border-radius:16px;
+  padding:18px;
+  box-shadow:0 8px 22px rgba(0,0,0,.06);
+  min-height:170px;
+}
+
+/* Flechas */
+.car-btn{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:42px; height:42px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.15);
+  background:#fff;
+  cursor:pointer;
+  z-index:10;
+  display:grid;
+  place-items:center;
+  font-size:22px;
+}
+.car-btn.prev{ left:10px; }
+.car-btn.next{ right:10px; }
+
+/* Responsive: 2 visibles en tablet */
+@media (max-width: 1024px){
+  .car-card{ flex-basis: calc((100% - 16px) / 2); }
+}
+
+/* Responsive: 1 visible en móvil */
+@media (max-width: 640px){
+  .car-viewport{ padding: 8px 12px; }
+  .car-btn{ display:none; }
+  .car-card{ flex-basis: 85%; }
+}
+
+(() => {
+  const carousel = document.getElementById("servicesCarousel");
+  const track = document.getElementById("servicesTrack");
+  if (!carousel || !track) return;
+
+  const btnPrev = carousel.querySelector(".car-btn.prev");
+  const btnNext = carousel.querySelector(".car-btn.next");
+
+  // Obtiene cuántas cards se muestran según el CSS actual
+  function slidesToShow() {
+    if (window.matchMedia("(max-width: 640px)").matches) return 1;
+    if (window.matchMedia("(max-width: 1024px)").matches) return 2;
+    return 3;
+  }
+
+  let originalSlides = Array.from(track.children);
+  let clonesAdded = false;
+
+  let index = 0;            // índice dentro del track (con clones)
+  let slideW = 0;           // ancho card + gap
+  let gap = 16;
+  let timer = null;
+  let isAnimating = false;
+
+  function computeSizes() {
+    const first = track.querySelector(".car-card");
+    if (!first) return;
+
+    const style = getComputedStyle(track);
+    gap = parseInt(style.gap || "16", 10);
+
+    const rect = first.getBoundingClientRect();
+    slideW = rect.width + gap;
+  }
+
+  function setTransition(on) {
+    track.style.transition = on ? "transform 450ms ease" : "none";
+  }
+
+  function translate() {
+    track.style.transform = `translateX(${-index * slideW}px)`;
+  }
+
+  function buildClones() {
+    if (clonesAdded) return;
+
+    const n = slidesToShow(); // clonamos lo necesario para que el loop sea perfecto
+    const slides = Array.from(track.children);
+
+    const headClones = slides.slice(0, n).map(node => node.cloneNode(true));
+    const tailClones = slides.slice(-n).map(node => node.cloneNode(true));
+
+    tailClones.forEach(cl => track.insertBefore(cl, track.firstChild));
+    headClones.forEach(cl => track.appendChild(cl));
+
+    clonesAdded = true;
+
+    // arrancamos “después” de los clones del inicio
+    index = n;
+    computeSizes();
+    setTransition(false);
+    translate();
+    // fuerza reflow para que luego el transition funcione
+    track.offsetHeight;
+    setTransition(true);
+  }
+
+  function rebuild() {
+    // Reset track a originales (por cambios responsive)
+    track.innerHTML = "";
+    originalSlides.forEach(s => track.appendChild(s));
+
+    clonesAdded = false;
+    buildClones();
+  }
+
+  function move(dir) {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    index += dir;
+    setTransition(true);
+    translate();
+  }
+
+  function next() { move(+1); }
+  function prev() { move(-1); }
+
+  function startAuto() {
+    stopAuto();
+    timer = setInterval(next, 3000);
+  }
+
+  function stopAuto() {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  // Ajuste “infinito” al terminar la animación
+  track.addEventListener("transitionend", () => {
+    const n = slidesToShow();
+    const totalOriginal = originalSlides.length;
+
+    // index válido para originales: [n ... n+totalOriginal-1]
+    // si pasamos el final (clones del final)
+    if (index >= n + totalOriginal) {
+      setTransition(false);
+      index = n;            // vuelve al inicio real
+      translate();
+      track.offsetHeight;
+      setTransition(true);
+    }
+
+    // si pasamos el inicio (clones del inicio)
+    if (index < n) {
+      setTransition(false);
+      index = n + totalOriginal - 1; // salta al último real
+      translate();
+      track.offsetHeight;
+      setTransition(true);
+    }
+
+    isAnimating = false;
+  });
+
+  // Botones
+  if (btnNext) btnNext.addEventListener("click", () => { stopAuto(); next(); startAuto(); });
+  if (btnPrev) btnPrev.addEventListener("click", () => { stopAuto(); prev(); startAuto(); });
+
+  // Pausa al interactuar
+  carousel.addEventListener("mouseenter", stopAuto);
+  carousel.addEventListener("mouseleave", startAuto);
+  carousel.addEventListener("touchstart", stopAuto, { passive: true });
+  carousel.addEventListener("touchend", startAuto, { passive: true });
+
+  // Init
+  rebuild();
+  startAuto();
+
+  // Rebuild al cambiar tamaño (para 3/2/1)
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      stopAuto();
+      // guardamos los originales actuales (sin clones)
+      originalSlides = originalSlides.map(n => n); // mantiene referencias
+      rebuild();
+      startAuto();
+    }, 150);
+  });
+})();
+
+
+JS ANTERIOR:
+// Menú responsive
+const burger = document.getElementById("burger");
+const nav = document.getElementById("nav");
+
+if (burger && nav) {
+  burger.addEventListener("click", () => nav.classList.toggle("show"));
+
+  // Cierra menú al hacer click en un link
+  document.querySelectorAll(".nav-link").forEach(a => {
+    a.addEventListener("click", () => nav.classList.remove("show"));
+  });
+}
+
+// Activo según sección (scroll)
+const links = document.querySelectorAll(".nav-link");
+const sections = ["inicio", "nosotros", "servicios", "contacto", "clientes", "porque"].map(id => document.getElementById(id));
+
+
+window.addEventListener("scroll", () => {
+  const y = window.scrollY + 120;
+  let current = "inicio";
+
+  sections.forEach(sec => {
+    if (sec && sec.offsetTop <= y) current = sec.id;
+  });
+
+  links.forEach(l => {
+    l.classList.toggle("active", l.getAttribute("href") === `#${current}`);
+  });
+});
+
+// Modal video
+const btnVideo = document.getElementById("btnVideo");
+const modal = document.getElementById("videoModal");
+const closeModal = document.getElementById("closeModal");
+const videoFrame = document.getElementById("videoFrame");
+
+// Pon tu URL embed (YouTube ejemplo)
+const videoEmbed = "";
+
+function openModal() {
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+  videoFrame.src = videoEmbed;
+}
+function closeVideoModal() {
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+  videoFrame.src = "";
+}
+
+if (btnVideo && modal) btnVideo.addEventListener("click", openModal);
+if (closeModal) closeModal.addEventListener("click", closeVideoModal);
+if (modal) modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeVideoModal();
+});
+
+const contactForm = document.getElementById("contactForm");
+const contactMsg  = document.getElementById("contactMsg");
+
+function showMsg(type, text) {
+  if (!contactMsg) return;
+
+  contactMsg.className = "contact-msg " + type;
+  contactMsg.textContent = text;
+  contactMsg.style.display = "block";
+
+  requestAnimationFrame(() => contactMsg.classList.add("show"));
+
+  // auto ocultar
+  clearTimeout(showMsg._t1);
+  clearTimeout(showMsg._t2);
+  showMsg._t1 = setTimeout(() => {
+    contactMsg.classList.remove("show");
+    showMsg._t2 = setTimeout(() => {
+      contactMsg.style.display = "none";
+    }, 350);
+  }, 4500);
+}
+
+if (contactForm && contactMsg) {
+  contactForm.addEventListener("submit", async (e) => {
+    e.preventDefault(); // ✅ no recarga
+
+    // ✅ mensaje inmediato al click en Enviar
+    showMsg("info", "Enviando mensaje...");
+
+    const submitBtn = contactForm.querySelector("button[type='submit']");
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(contactForm.action, {
+        method: "POST",
+        body: new FormData(contactForm),
+      });
+
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      // ✅ limpiar formulario
+      contactForm.reset();
+
+      // ✅ mensaje éxito
+      showMsg("success", "Mensaje enviado correctamente. Nos pondremos en contacto contigo.");
+
+    } catch (err) {
+      // ✅ mensaje error
+      showMsg("error", "No se pudo enviar el mensaje. Intenta nuevamente.");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
+// Carrusel de fondo en CONTACTO con 2 bolitas (infinito)
+(function(){
+  const section = document.getElementById("contacto");
+  if (!section) return;
+
+  const dots = section.querySelectorAll(".contact-dot");
+  if (!dots.length) return;
+
+  // Cambia estas rutas por tus imágenes reales
+  const slides = [
+    "assets/img/slide1.png",
+    "assets/img/slide2.png",
+  ];
+
+  let current = 0;
+  let timer = null;
+
+  function setSlide(i){
+    current = (i + slides.length) % slides.length;
+    section.style.backgroundImage = `url('${slides[current]}')`;
+
+    dots.forEach((d, idx) => d.classList.toggle("active", idx === current));
+  }
+
+  function next(){
+    setSlide(current + 1);
+  }
+
+  // Click en bolitas
+  dots.forEach(d => {
+    d.addEventListener("click", () => {
+      const i = parseInt(d.getAttribute("data-slide") || "0", 10);
+      stop();
+      setSlide(i);
+      start();
+    });
+  });
+
+  function start(){
+    stop();
+    timer = setInterval(next, 6000); // cada 6s
+  }
+
+  function stop(){
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  // Pausa cuando el usuario está encima (opcional)
+  section.addEventListener("mouseenter", stop);
+  section.addEventListener("mouseleave", start);
+
+  // Init
+  setSlide(0);
+  start();
+})();
+
+CLIENTES ANTES DE POR QUÉ ELEGIRNOS
+<!-- CLIENTES -->
+<section id="clientes" class="clients">
+  <div class="container">
+    <h2 class="clientes-title">Nuestros clientes</h2>
+
+    <div class="clients-box">
+      <div class="clients-grid">
+        <!-- Reemplaza las rutas por tus logos -->
+        <img src="assets/img/clientes/cliente1.png" alt="Clientes">
+      </div>
+    </div>
+  </div>
+</section>
